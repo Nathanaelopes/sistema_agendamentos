@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Barber Admin | Sistema SaaS</title>
+    
+    <style>
+        :root { 
+            --primary: #d4af37; --bg: #0a0a0a; --card: #161616; 
+            --text: #eee; --success: #2ecc71; --danger: #e74c3c; --info: #3498db;
+        }
+
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar */
+        nav { width: 240px; background: #000; border-right: 1px solid #222; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
+        nav h2 span { color: var(--primary); }
+        .nav-link { color: #888; text-decoration: none; padding: 15px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 10px; }
+        .nav-link:hover, .nav-link.active { background: var(--card); color: var(--primary); font-weight: bold; }
+        .btn-sair { margin-top: auto; color: var(--danger); border: 1px solid var(--danger); text-align: center; justify-content: center; }
+
+        /* Área Principal */
+        main { flex: 1; padding: 30px; overflow-y: auto; }
+        .view { display: none; max-width: 1000px; margin: 0 auto; }
+        .view.active { display: block; }
+
+        /* Cards */
+        .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); padding: 25px; border-radius: 12px; border-left: 4px solid var(--primary); }
+        .stat-card h3 { margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; }
+        .stat-card p { margin: 10px 0 0; font-size: 1.6rem; font-weight: bold; }
+
+        /* Tabelas e Forms */
+        .table-container { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #222; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { color: var(--primary); padding: 12px; border-bottom: 1px solid #333; text-align: left; font-size: 0.85rem; }
+        td { padding: 12px; border-bottom: 1px solid #222; font-size: 0.9rem; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #888; font-size: 0.85rem; }
+        input, select { width: 100%; padding: 12px; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; box-sizing: border-box; }
+        
+        .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-primary { background: var(--primary); color: #000; width: 100%; }
+        
+        .status { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .status-pendente { background: rgba(212, 175, 55, 0.2); color: var(--primary); }
+        .status-concluido { background: rgba(46, 204, 113, 0.2); color: var(--success); }
+        .status-faltou { background: rgba(231, 76, 60, 0.2); color: var(--danger); }
+
+        /* Modais */
+        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; display:none; }
+        .modal { position: fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--card); padding:25px; border-radius:12px; z-index:1000; display:none; width:320px; border: 1px solid var(--primary); }
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+    <nav>
+        <h2>Barber<span>SaaS</span></h2>
+        <div class="nav-link active" onclick="showView('dashboard')">🏠 Painel Geral</div>
+        <div class="nav-link" onclick="showView('servicos')">✂️ Serviços</div>
+        <div class="nav-link" onclick="showView('config')">⚙️ Minha Conta</div>
+        <div class="nav-link btn-sair" onclick="sair()">Sair</div>
+    </nav>
+
+    <main>
+        <div id="dashboard" class="view active">
+            <div style="background: #1a1a1a; border: 1px solid var(--primary); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+                <h3 style="margin: 0 0 10px 0; color: var(--primary);">🔗 Link de Agendamento do Cliente</h3>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="link-url" readonly style="background: #000;">
+                    <button class="btn" style="background: var(--primary);" onclick="copiarLink()">Copiar</button>
+                </div>
+            </div>
+
+            <div class="grid-stats">
+                <div class="stat-card"><h3>Total Agendamentos</h3><p id="count-total">0</p></div>
+                <div class="stat-card"><h3>Concluídos</h3><p id="count-ok">0</p></div>
+                <div class="stat-card"><h3>Receita Estimada</h3><p id="total-receita">R$ 0,00</p></div>
+            </div>
+
+            <div class="table-container">
+                <h3>Próximos Clientes</h3>
+                <table>
+                    <thead>
+                        <tr><th>Data</th><th>Hora</th><th>Cliente</th><th>Serviço</th><th>Status</th><th>Ações</th></tr>
+                    </thead>
+                    <tbody id="tabela-agendamentos"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="servicos" class="view">
+            <h1>Gerenciar Serviços</h1>
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px;">
+                <div class="table-container">
+                    <h3>Novo Serviço</h3>
+                    <div class="form-group"><label>Nome</label><input type="text" id="new-svc-nome"></div>
+                    <div class="form-group"><label>Preço</label><input type="number" id="new-svc-preco"></div>
+                    <button class="btn btn-primary" onclick="addService()">Adicionar</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Serviço</th><th>Preço</th><th>Ação</th></tr></thead>
+                        <tbody id="tabela-servicos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="config" class="view">
+            <h1>Configurações da Conta</h1>
+            <div class="table-container" style="max-width: 500px;">
+                <div class="form-group"><label>Nome da Barbearia</label><input type="text" id="cfg-nome-loja"></div>
+                <div class="form-group"><label>Email Admin</label><input type="text" id="cfg-email" disabled></div>
+                <div class="form-group"><label>Seu ID Único</label><input type="text" id="cfg-uid" disabled></div>
+                <button class="btn btn-primary" onclick="savePerfil()">Salvar Perfil</button>
+            </div>
+        </div>
+    </main>
+
+    <div class="overlay" id="overlay" onclick="closeModal()"></div>
+    <div class="modal" id="modal-status">
+        <h3>Alterar Status</h3>
+        <select id="select-status">
+            <option value="pendente">Pendente</option>
+            <option value="concluido">Concluído</option>
+            <option value="faltou">Faltou</option>
+        </select>
+        <button class="btn btn-primary" style="margin-top: 15px;" onclick="updateStatus()">Salvar</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWaPBTUKBkzcgoZIlFvm6keUk0awVgv8o",
+            authDomain: "barbershop-23dbb.firebaseapp.com",
+            databaseURL: "https://barbershop-23dbb-default-rtdb.firebaseio.com",
+            projectId: "barbershop-23dbb",
+            appId: "1:1066899217372:web:4bd4a63a73a3a8a4e4cd19"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        let userPath = "";
+        let currentAgendamentoId = "";
+
+        // CONTROLE DE SESSÃO DINÂMICA
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                userPath = `usuarios/${user.uid}`;
+                
+                // Configura interface
+                document.getElementById('cfg-email').value = user.email;
+                document.getElementById('cfg-uid').value = user.uid;
+                
+                // Gera Link do Cliente
+                const link = window.location.origin + window.location.pathname.replace('admin.html', '') + "agendamento.html?id=" + user.uid;
+                document.getElementById('link-url').value = link;
+
+                // Carrega Dados do Perfil
+                db.ref(`${userPath}/config/perfil`).once('value', s => {
+                    if(s.val()) document.getElementById('cfg-nome-loja').value = s.val().nomeLoja || "";
+                });
+
+                loadDashboard();
+                loadServices();
+            } else {
+                window.location.href = "admin.html";
+            }
+        });
+
+        // DASHBOARD
+        function loadDashboard() {
+            db.ref(`${userPath}/agendamentos`).on('value', snap => {
+                const list = snap.val();
+                const tbody = document.getElementById('tabela-agendamentos');
+                tbody.innerHTML = "";
+                
+                let total = 0, ok = 0, receita = 0;
+
+                if(list) {
+                    Object.keys(list).reverse().forEach(id => {
+                        const ag = list[id];
+                        total++;
+                        if(ag.status === 'concluido') { ok++; receita += parseFloat(ag.valorTotal || 0); }
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${ag.dataAgendamento}</td>
+                                <td>${ag.horario}</td>
+                                <td>${ag.cliente}</td>
+                                <td>${ag.servicos}</td>
+                                <td><span class="status status-${ag.status}">${ag.status}</span></td>
+                                <td><button class="btn" style="padding:5px; font-size:10px;" onclick="openModal('${id}')">Status</button></td>
+                            </tr>
+                        `;
+                    });
+                }
+                document.getElementById('count-total').innerText = total;
+                document.getElementById('count-ok').innerText = ok;
+                document.getElementById('total-receita').innerText = `R$ ${receita.toFixed(2)}`;
+            });
+        }
+
+        // SERVIÇOS
+        function loadServices() {
+            db.ref(`${userPath}/config/servicos`).on('value', snap => {
+                const svcs = snap.val();
+                const tbody = document.getElementById('tabela-servicos');
+                tbody.innerHTML = "";
+                if(svcs) {
+                    Object.keys(svcs).forEach(id => {
+                        tbody.innerHTML += `<tr><td>${svcs[id].nome}</td><td>R$ ${svcs[id].preco}</td><td><button onclick="delSvc('${id}')" style="color:red; background:none; border:none; cursor:pointer;">Remover</button></td></tr>`;
+                    });
+                }
+            });
+        }
+
+        function addService() {
+            const nome = document.getElementById('new-svc-nome').value;
+            const preco = document.getElementById('new-svc-preco').value;
+            if(nome && preco) {
+                db.ref(`${userPath}/config/servicos`).push({ nome, preco });
+                document.getElementById('new-svc-nome').value = "";
+                document.getElementById('new-svc-preco').value = "";
+            }
+        }
+
+        function delSvc(id) { db.ref(`${userPath}/config/servicos/${id}`).remove(); }
+
+        // PERFIL
+        function savePerfil() {
+            const nomeLoja = document.getElementById('cfg-nome-loja').value;
+            db.ref(`${userPath}/config/perfil`).update({ nomeLoja }).then(() => alert("Perfil atualizado!"));
+        }
+
+        // UTILITÁRIOS
+        function showView(v) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            document.getElementById(v).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        function openModal(id) {
+            currentAgendamentoId = id;
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('modal-status').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('modal-status').style.display = 'none';
+        }
+
+        function updateStatus() {
+            const st = document.getElementById('select-status').value;
+            db.ref(`${userPath}/agendamentos/${currentAgendamentoId}`).update({ status: st }).then(closeModal);
+        }
+
+        function copiarLink() {
+            const copyText = document.getElementById("link-url");
+            copyText.select();
+            navigator.clipboard.writeText(copyText.value);
+            alert("Link copiado!");
+        }
+
+        function sair() {
+        window.location.href = "/login.html";
+}
+    </script>
+</body>
+</html>
