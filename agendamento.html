@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barber Pro | Agendamento Online</title>
+    
+    <style>
+        :root { --primary: #d4af37; --bg: #0f0f0f; --card: #1a1a1a; --white: #ffffff; }
+        body { background: var(--bg); color: var(--white); font-family: 'Segoe UI', sans-serif; margin: 0; padding-bottom: 120px; }
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+        header { text-align: center; padding: 30px 0; border-bottom: 1px solid #333; }
+        h1 span { color: var(--primary); }
+        
+        .section { background: var(--card); border-radius: 12px; padding: 20px; margin-top: 20px; border: 1px solid #2a2a2a; }
+        h2 { font-size: 1.1rem; color: var(--primary); margin-top: 0; margin-bottom: 15px; }
+
+        .service-item { display: flex; justify-content: space-between; padding: 15px; border: 1px solid #333; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: 0.3s; }
+        .service-item.active { border-color: var(--primary); background: rgba(212, 175, 55, 0.1); }
+
+        .grid-horas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; }
+        .hora { background: #222; padding: 10px; text-align: center; border-radius: 5px; cursor: pointer; border: 1px solid transparent; transition: 0.2s; font-size: 0.9rem; }
+        .hora.active { border-color: var(--primary); background: var(--primary); color: #000; font-weight: bold; }
+
+        input { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: 1px solid #333; background: #222; color: #fff; box-sizing: border-box; outline: none; font-size: 1rem; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+
+        .footer-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a1a; padding: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid var(--primary); box-shadow: 0 -5px 15px rgba(0,0,0,0.5); z-index: 100; }
+        .btn-confirmar { background: var(--primary); color: #000; border: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: #1a1a1a; border: 2px solid var(--primary); padding: 30px; border-radius: 15px; text-align: center; max-width: 350px; width: 90%; }
+        .btn-modal { background: var(--primary); color: #000; border: none; padding: 10px 30px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 20px; width: 100%; }
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+</head>
+<body>
+
+    <header><h1>BARBER<span>PRO</span></h1></header>
+
+    <div class="container" id="app-content">
+        <div class="section">
+            <h2>1. Selecione os Serviços</h2>
+            <div id="lista-servicos">Carregando serviços...</div>
+        </div>
+
+        <div class="section">
+            <h2>2. Escolha a Data e Horário</h2>
+            <input type="date" id="data-agendamento">
+            <div class="grid-horas" id="grid-horas">
+                </div>
+        </div>
+
+        <div class="section">
+            <h2>3. Seus Dados</h2>
+            <input type="text" id="nome" placeholder="Seu Nome completo">
+            <input type="tel" id="whatsapp" placeholder="WhatsApp (DDD + Número)">
+        </div>
+    </div>
+
+    <footer class="footer-bar">
+        <div>Total: <strong>R$ <span id="total-txt">0,00</span></strong></div>
+        <button class="btn-confirmar" onclick="enviarAgendamento()">Confirmar Agendamento</button>
+    </footer>
+
+    <div class="modal-overlay" id="modalSucesso">
+        <div class="modal-content">
+            <div style="font-size: 50px;">✅</div>
+            <h3 style="color: var(--primary);">Sucesso!</h3>
+            <p style="color: #ccc;">Seu horário foi reservado com sucesso.</p>
+            <button class="btn-modal" onclick="location.reload()">FECHAR</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWaPBTUKBkzcgoZIlFvm6keUk0awVgv8o",
+            authDomain: "barbershop-23dbb.firebaseapp.com",
+            databaseURL: "https://barbershop-23dbb-default-rtdb.firebaseio.com",
+            projectId: "barbershop-23dbb",
+            appId: "1:1066899217372:web:4bd4a63a73a3a8a4e4cd19"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const barbeiroUID = urlParams.get('id');
+
+        let selecionados = [];
+        let valorTotal = 0;
+        let horaSelecionada = "";
+
+        if (!barbeiroUID) {
+            document.getElementById('app-content').innerHTML = "<h2 style='text-align:center;'>Link de agendamento inválido!</h2>";
+        }
+
+        // CARREGAR SERVIÇOS
+        function carregarServicos() {
+            db.ref(`usuarios/${barbeiroUID}/config/servicos`).on('value', snap => {
+                const container = document.getElementById('lista-servicos');
+                container.innerHTML = "";
+                const servicos = snap.val();
+                
+                if (servicos) {
+                    Object.values(servicos).forEach(s => {
+                        const div = document.createElement('div');
+                        div.className = 'service-item';
+                        div.innerHTML = `<span>${s.nome}</span> <b>R$ ${parseFloat(s.preco).toFixed(2)}</b>`;
+                        div.onclick = () => togglerServico(div, s.nome, s.preco);
+                        container.appendChild(div);
+                    });
+                } else {
+                    container.innerHTML = "O barbeiro não cadastrou serviços.";
+                }
+            });
+        }
+
+        function togglerServico(elemento, nome, preco) {
+            if (elemento.classList.contains('active')) {
+                elemento.classList.remove('active');
+                selecionados = selecionados.filter(item => item !== nome);
+                valorTotal -= parseFloat(preco);
+            } else {
+                elemento.classList.add('active');
+                selecionados.push(nome);
+                valorTotal += parseFloat(preco);
+            }
+            document.getElementById('total-txt').innerText = valorTotal.toFixed(2).replace('.', ',');
+        }
+
+        // GERAR GRADE DE HORÁRIOS (8h às 19h)
+        function gerarHorarios() {
+            const grid = document.getElementById('grid-horas');
+            const horas = ["08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
+            
+            horas.forEach(h => {
+                const span = document.createElement('span');
+                span.className = 'hora';
+                span.innerText = h;
+                span.onclick = () => {
+                    document.querySelectorAll('.hora').forEach(el => el.classList.remove('active'));
+                    span.classList.add('active');
+                    horaSelecionada = h;
+                };
+                grid.appendChild(span);
+            });
+        }
+
+        // ENVIAR PARA O FIREBASE
+        async function enviarAgendamento() {
+            const nome = document.getElementById('nome').value;
+            const zap = document.getElementById('whatsapp').value;
+            const data = document.getElementById('data-agendamento').value;
+
+            if (selecionados.length === 0 || !nome || !zap || !data || !horaSelecionada) {
+                alert("Por favor, preencha todos os campos e selecione ao menos um serviço!");
+                return;
+            }
+
+            try {
+                await db.ref(`usuarios/${barbeiroUID}/agendamentos`).push({
+                    cliente: nome,
+                    whatsapp: zap,
+                    servicos: selecionados.join(' + '),
+                    horario: horaSelecionada,
+                    valorTotal: valorTotal,
+                    dataAgendamento: data,
+                    status: "pendente",
+                    dataCriacao: new Date().toISOString()
+                });
+                
+                document.getElementById('modalSucesso').style.display = 'flex';
+            } catch (e) {
+                alert("Erro ao salvar agendamento.");
+            }
+        }
+
+        // Iniciar
+        carregarServicos();
+        gerarHorarios();
+    </script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Barber Pro Admin</title>
+    <style>
+        :root { 
+            --primary: #d4af37; 
+            --bg: #0a0a0a; 
+            --card: #161616; 
+            --white: #ffffff; 
+        }
+        
+        body { 
+            background: var(--bg); 
+            color: var(--white); 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+
+        .login-card { 
+            background: var(--card); 
+            padding: 40px; 
+            border-radius: 20px; 
+            border: 1px solid #222; 
+            text-align: center; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+            max-width: 380px;
+            width: 90%;
+        }
+
+        .logo h1 { margin: 0; font-size: 2rem; letter-spacing: 2px; }
+        .logo h1 span { color: var(--primary); }
+        .login-card p { color: #888; margin: 15px 0 30px; font-size: 0.95rem; line-height: 1.4; }
+
+        .btn-google {
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(255,255,255,0.1);
+        }
+
+        .btn-google:hover { 
+            background: #f1f1f1; 
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255,255,255,0.2);
+        }
+
+        .btn-google img { width: 22px; }
+
+        .loader {
+            display: none;
+            margin: 20px auto 0;
+            border: 3px solid #333;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .status-msg { margin-top: 15px; font-size: 0.8rem; color: var(--primary); display: none; }
+        
+        .footer-info { margin-top: 30px; font-size: 0.75rem; color: #444; }
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="logo">
+            <h1>BARBER<span>PRO</span></h1>
+        </div>
+        <p>Área do Profissional. Faça login para gerenciar sua agenda, serviços e clientes.</p>
+        
+        <button class="btn-google" id="btnGoogle" onclick="loginComGoogle()">
+            <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google Logo">
+            Acessar meu Painel
+        </button>
+
+        <div class="loader" id="loader"></div>
+        <div class="status-msg" id="statusMsg">Autenticando profissional...</div>
+
+        <div class="footer-info">
+            Sistema de Agendamento Profissional v2.0
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWaPBTUKBkzcgoZIlFvm6keUk0awVgv8o",
+            authDomain: "barbershop-23dbb.firebaseapp.com",
+            databaseURL: "https://barbershop-23dbb-default-rtdb.firebaseio.com",
+            projectId: "barbershop-23dbb",
+            appId: "1:1066899217372:web:4bd4a63a73a3a8a4e4cd19"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        function loginComGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            
+            // UI Update
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('btnGoogle').style.opacity = '0.5';
+            document.getElementById('btnGoogle').disabled = true;
+
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    // No modelo SaaS, qualquer um que loga aqui é um Admin
+                    // O Firebase cria o UID único automaticamente
+                    document.getElementById('statusMsg').style.display = 'block';
+                    
+                    setTimeout(() => {
+                        window.location.href = "admin/admin.html"; 
+                    }, 800);
+                })
+                .catch((error) => {
+                    console.error("Erro no login:", error);
+                    alert("Erro ao acessar o Google. Verifique sua conexão.");
+                    resetBotao();
+                });
+        }
+
+        function resetBotao() {
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('btnGoogle').style.opacity = '1';
+            document.getElementById('btnGoogle').disabled = false;
+            document.getElementById('statusMsg').style.display = 'none';
+        }
+
+         
+         
+    </script>
+</body>
+</html>

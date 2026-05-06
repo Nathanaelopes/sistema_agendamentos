@@ -1,0 +1,42 @@
+:root {
+    --primary: #d4af37; /* Dourado */
+    --bg: #0f0f0f;
+    --card-bg: #1a1a1a;
+    --text: #ffffff;
+    --text-muted: #a0a0a0;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding-bottom: 100px; }
+
+.navbar { padding: 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+.logo { font-size: 1.4rem; font-weight: 900; letter-spacing: 1px; }
+.logo span { color: var(--primary); }
+.status-badge { font-size: 0.8rem; color: #44ff44; background: rgba(68, 255, 68, 0.1); padding: 5px 12px; border-radius: 20px; }
+
+.app-container { max-width: 500px; margin: 20px auto; padding: 0 20px; }
+
+.booking-card { background: var(--card-bg); border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 1px solid #2a2a2a; }
+.step-header { display: flex; align-items: center; margin-bottom: 20px; }
+.step-num { background: var(--primary); color: #000; font-weight: bold; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin-right: 12px; font-size: 0.8rem; }
+
+/* Serviços */
+.service-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-radius: 10px; border: 1px solid #333; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
+.service-item.selected { border-color: var(--primary); background: rgba(212, 175, 55, 0.05); }
+.service-info h4 { font-size: 1rem; margin-bottom: 4px; }
+.service-info p { color: var(--primary); font-weight: bold; font-size: 0.9rem; }
+
+/* Grade de Horas */
+.time-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.time-slot { background: #222; padding: 10px; text-align: center; border-radius: 8px; font-size: 0.9rem; cursor: pointer; border: 1px solid transparent; }
+.time-slot.selected { background: var(--primary); color: #000; font-weight: bold; }
+
+/* Checkout Bar */
+.checkout-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(26, 26, 26, 0.95); backdrop-filter: blur(10px); padding: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #333; z-index: 100; }
+.checkout-info .label { display: block; font-size: 0.8rem; color: var(--text-muted); }
+.checkout-info .price { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+.btn-confirm { background: var(--primary); color: #000; border: none; padding: 15px 25px; border-radius: 10px; font-weight: 800; cursor: pointer; transition: 0.3s; }
+.btn-confirm:hover { transform: scale(1.05); }
+
+/* Form */
+.form-group input { width: 100%; background: #222; border: 1px solid #333; padding: 15px; border-radius: 10px; color: #fff; margin-bottom: 10px; outline: none; }
